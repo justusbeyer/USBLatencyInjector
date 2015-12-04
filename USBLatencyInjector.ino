@@ -2,8 +2,8 @@
 #include <Keyboard.h>
 #include <Mouse.h>
 
-#include <hidboot.h>
-#include <usbhub.h>
+#include "hidboot.h"
+#include "usbhub.h"
 
 // Satisfy IDE, which only needs to see the include statment in the ino.
 #ifdef dobogusinclude
@@ -13,7 +13,7 @@
 
 #include <HID.h>
 
-#define KAPUTT 1
+#define DEBUG_LOG 0
 
 const unsigned long DELAY_MILLIS = 600;
 
@@ -53,7 +53,7 @@ public:
       reports[nextReportIndex].bytes_length = len;
 
     // Log
-#if KAPUTT
+#if DEBUG_LOG
     Serial.print("+");
     Serial.print("(");
     Serial.print(nextReportIndex);
@@ -86,7 +86,7 @@ public:
         reports[oldestReportIndex].bytes_length);
 
       // Log
-#if KAPUTT
+#if DEBUG_LOG
       Serial.print("-");
       Serial.print("(");
       Serial.print(oldestReportIndex);
@@ -124,14 +124,6 @@ class MouseRptParser : public MouseReportParser
 {
   void Parse(usb_host_shield::HID *hid, bool is_rpt_id, uint8_t len, uint8_t *buf) {
     reportDelayRelay.enqueueReport(1, buf, len);
-    /*HID().SendReport(
-        1,
-        buf,
-        len);*/
-
-    // Mouse.move(100,100, 0);
-
-    
   }
 };
 
@@ -139,23 +131,15 @@ class KbdRptParser : public KeyboardReportParser
 {
     void Parse(usb_host_shield::HID *hid, bool is_rpt_id, uint8_t len, uint8_t *buf) {
       reportDelayRelay.enqueueReport(2, buf, len);
-      /*HID().SendReport(
-        2,
-        buf,
-        len);
-      Serial.print("K recv len ");
-      Serial.println(len);*/
     }
 };
 
 USB     Usb;
-USBHub     Hub(&Usb);
+USBHub  Hub(&Usb);
 
-HIDBoot < HID_PROTOCOL_KEYBOARD | HID_PROTOCOL_MOUSE > HidComposite(&Usb);
-HIDBoot<HID_PROTOCOL_KEYBOARD>    HidKeyboard(&Usb);
-HIDBoot<HID_PROTOCOL_MOUSE>    HidMouse(&Usb);
-
-//uint32_t next_time;
+HIDBoot<HID_PROTOCOL_KEYBOARD | HID_PROTOCOL_MOUSE> HidComposite(&Usb);
+HIDBoot<HID_PROTOCOL_KEYBOARD>  HidKeyboard(&Usb);
+HIDBoot<HID_PROTOCOL_MOUSE>     HidMouse(&Usb);
 
 KbdRptParser KbdPrs;
 MouseRptParser MousePrs;
@@ -167,17 +151,12 @@ void setup()
   Mouse.begin();
   
   Serial.begin( 115200 );
-#if !defined(__MIPSEL__)
-  while (!Serial); // Wait for serial port to connect - used on Leonardo, Teensy and other boards with built-in USB CDC serial connection
-#endif
   Serial.println("Start");
 
   if (Usb.Init() == -1)
     Serial.println("OSC did not start.");
 
   delay( 200 );
-
-  //next_time = millis() + 5000;
 
   HidComposite.SetReportParser(0, (HIDReportParser*)&KbdPrs);
   HidComposite.SetReportParser(1, (HIDReportParser*)&MousePrs);
